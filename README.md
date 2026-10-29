@@ -39,6 +39,43 @@
 <!-- The path a submission takes, from arriving to the label a reader sees.
      Six or seven steps — this is the trace you wrote in Milestone 1. -->
 
+1. **The request arrives** at `POST /submit` (`app.py::submit`). Flask parses
+   the body as JSON. *Adds:* a `payload` dict, or an empty one if the body
+   wasn't JSON.
+2. **The input is checked.** `text` must be a non-empty string and
+   `creator_id` must be present. If either is wrong, the route stops here and
+   returns a 400, and the rejection is written to the log
+   (`audit.log_rejection`). *Adds:* a guarantee that everything below gets real
+   text.
+3. **A `content_id` is assigned**, a new unique ID for this one submission.
+   *Adds:* the handle that the log, the response, and any later appeal all
+   share.
+4. **Signal one reads the text** (`detector.model_signal`). GPT-2, running
+   locally, measures how predictable the text is (perplexity), and that is
+   turned into a 0–1 score. *Adds:* `model_score`, where higher means more
+   likely AI.
+5. **Signal two measures the text as text** (`stylometry.style_signal`):
+   sentence length spread, vocabulary variety, and punctuation, combined into a
+   0–1 score. *Adds:* `style_score`, where higher means more likely AI.
+6. **The two signals are combined** (`scoring.combine_signals`) into one 0–1
+   number. *Adds:* `confidence`, the combined score, where 0 means confidently
+   human and 1 means confidently AI.
+7. **The number becomes words** (`scoring.score_to_label`). Thresholds in
+   `config.py` pick one of three bands. *Adds:* `guess` (`ai` / `human` /
+   `unsure`) and the full-sentence `label` a reader sees.
+8. **Everything is logged, then returned.** `audit.log_decision` writes the
+   timestamp, ids, both signal scores, the combined score, the guess, the
+   label, and `status: "decided"` to `logs/audit.jsonl`. The same fields go
+   back to the caller as JSON, and the site shows the reader the `label`.
+
+**Afterwards, if the writer disagrees:** they send the `content_id` and their
+reasoning to `POST /appeal`. The appeal is logged beside the original decision
+(nothing is overwritten), the status moves to `under_review`, and they get a
+confirmation.
+
+The endpoint contract and the false-positive trace from Milestone 1 are in
+[design.md](design.md).
+
 
 
 ---
@@ -53,19 +90,51 @@
 
 ### Signal one — the model signal
 
-**What it measures:**
+**What it measures:** How predictable the text is to a language model
+(`detector.py::model_signal`). GPT-2 runs locally and computes perplexity, a
+measure of how surprised it is by each next word. Low perplexity gives a high
+score. The raw number goes through a logistic curve so that perplexity 45 maps
+to 0.5.
 
-**Why that might differ between human and AI writing:**
+**Why that might differ between human and AI writing:** A language model
+writes by repeatedly picking a likely next word, so its output is text a model
+finds easy to predict. Human writing tends to wander more: odd word choices,
+specific details, abrupt turns.
 
-**What it can't see:**
+**What it can't see:** Who actually wrote it. Predictability isn't authorship.
+This signal rewards common words in short, ordinary sentences, and plenty of
+people write that way: second-language writers, younger writers, anyone writing
+plainly on purpose. In my own test, a plainly written human paragraph scored
+**0.857**, higher than my clearly-AI sample (0.754). It also misses in the
+other direction. AI text with a few unusual word choices swapped in looks
+human: my "borderline" sample (AI-style content in casual wording) scored
+0.349, below my clearly-human sample (0.445).
 
 ### Signal two — the style signal
 
-**What it measures:**
+**What it measures:** The shape of the text, without reading it
+(`stylometry.py::style_signal`). It will use three measures:
+- **Sentence length spread:** the standard deviation of sentence lengths
+  divided by the mean.
+- **Type-token ratio:** unique words over total words.
+- **Punctuation density:** especially the more personal marks (semicolons,
+  dashes, colons, parentheses).
 
-**Why that might differ between human and AI writing:**
+These are combined into a 0–1 score where higher means more likely AI.
 
-**What it can't see:**
+**Why that might differ between human and AI writing:** Generated prose tends
+toward even, mid-length sentences, a narrower and safer vocabulary, and tidy
+comma-and-full-stop punctuation, because "most likely next word" averages out
+to that. Human writing is lumpier: a three-word sentence next to a forty-word
+one, a dash where a comma would do.
+
+**What it can't see:** Meaning. Anything that changes the shape without
+changing the substance moves it: breaking long sentences into short ones,
+adding typos (which raise word variety), or pasting in a quotation or a list.
+That makes it cheap to fool on purpose. It is also length-sensitive, because
+type-token ratio falls as text gets longer, so a short piece and a long piece
+aren't directly comparable. And like signal one, it can mistake a plain,
+evenly paced human writer for a machine.
 
 ### The combining rule
 
