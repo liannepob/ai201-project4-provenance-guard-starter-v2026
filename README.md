@@ -141,9 +141,13 @@ evenly paced human writer for a machine.
 <!-- Write the rule in words, then give the numbers. What happens when the two
      signals disagree? -->
 
-**The rule:**
+**The rule:** A weighted average of the two signals. Both are on 0–1 with
+higher meaning more likely AI, so the combined score is on the same scale.
+When the signals disagree, the score lands between them, so strong
+disagreement tends to end up in the unsure band.
 
-**The numbers:**
+**The numbers:** model signal weight **0.5**, style signal weight **0.5**
+(`WEIGHT_MODEL_SIGNAL` and `WEIGHT_STYLE_SIGNAL` in `config.py`).
 
 **Where it lives:** `scoring.py::combine_signals`
 
@@ -151,6 +155,13 @@ evenly paced human writer for a machine.
      somewhere else, say where. -->
 
 **A case where my two signals split, and what my rule does with it:**
+My clearly-human sample (a first-person piece about a bad night and a
+coworker who notices). The model signal scored it **0.445**, close to unsure,
+because GPT-2 found it fairly predictable. The style signal scored it
+**0.178**, firmly human, because its sentence lengths vary widely (spread of
+15 words). The 50/50 average gives **0.311**, which is under the 0.35 human
+threshold, so it gets the human label. Here the style signal pulls a
+borderline model reading back to the right answer.
 
 
 
