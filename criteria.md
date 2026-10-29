@@ -42,63 +42,49 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
 
-<!-- Your criterion. It must name a number. -->
+## 1. Human writing is rarely flagged as AI
 
-
+Of 10 pieces of writing I can show are human, at most 2 get the high-confidence AI label, in each of the three trials.
 
 **Why this target:**
-
-
+Wrongly telling a real writer their work is AI-generated is the most expensive mistake this system can make, because it accuses someone of cheating on something they wrote themselves. Missing some AI text costs the site very little by comparison. I set the limit at 2 of 10 instead of 1 because the detector model can score differently between runs, but I keep it low because a false accusation is the costliest error. I'd rather have uncertain text land in the "unsure" label than risk an accusation.
 
 ---
 
-## 2.
+## 2. Bad input returns a clean error
 
-<!-- Your criterion. -->
-
-
+When `text` is missing, empty, or longer than 10,000 characters, `POST /submit` returns a 400 status with a JSON error message, and the service keeps running and does not write an entry to the log.
 
 **Why this target:**
-
-
+Bad input shouldn't be able to break the service or slip through as a real submission. Capping the length keeps one huge request from overloading the model and slowing things down for everyone. Rejecting empty or missing text stops the code from failing when it tries to read from a string that isn't there. It also keeps junk entries out of the log, so every score the system gives comes from text it can actually judge.
 
 ---
 
-## 3.
+## 3. Appeals always work
 
-<!-- Your criterion. -->
-
-
+For 5 appeals sent with a valid `content_id`, all 5 change the item's status to `under_review` and show up in `GET /log`. An appeal with an unknown `content_id` returns a 404 and changes nothing.
 
 **Why this target:**
-
-
+A writer who appeals and hears nothing back has no way to fix a wrong decision, so the appeal path has to work every time. Failing quietly on a bad ID would also hide real problems from me, so it needs a clear error.
 
 ---
 
-## 4.
+## 4. Formal human writing is not flagged as AI
 
-<!-- Your criterion. -->
-
-
+Of 5 formal pieces I can show are human (such as a research paper or a cover letter), at most 1 gets the high-confidence AI label, in each of the three trials. These 5 pieces are separate from the 10 in criterion 1.
 
 **Why this target:**
-
-
+Human writing with clean grammar and consistent punctuation can look AI-like to the detector, and a writer should not be accused of cheating just because their style is formal. This is the hardest case for my system, so I'm testing it on its own instead of letting it hide inside the general false positive average. I'm holding it to the same rate as my overall limit because a wrongful accusation costs a writer the same no matter how formal their writing is.
 
 ---
 
-## 5.
+## 5. Same text gets the same result
 
-<!-- Your criterion. -->
-
-
+Submitting the same text 5 times produces combined scores within 0.10 of each other (highest minus lowest), and the same label all 5 times, in each of the three trials.
 
 **Why this target:**
-
-
+A writer's result shouldn't depend on when they happened to submit. If the score drifts between runs, the same piece could be called human one time and AI the next, and the person who gets the AI label has been accused for no real reason. I allow a small amount of variation because the detector model can score slightly differently between runs, but not enough to change the label.
 
 ---
 
