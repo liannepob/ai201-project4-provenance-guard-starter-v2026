@@ -58,6 +58,38 @@ WEIGHT_MODEL_SIGNAL = 0.5
 WEIGHT_STYLE_SIGNAL = 0.5
 
 
+# ─── Style signal (Milestone 4) ──────────────────────────────────────────────
+# Each style measure is scaled onto 0–1 with a clamped straight line between
+# two anchors: the "AI end", at or past which the measure scores 1.0, and the
+# "human end", at or past which it scores 0.0. Everything between is linear.
+# Higher means more likely AI, the same direction as detector.model_signal.
+
+# Below this many words the style measures are too noisy to mean anything, so
+# style_signal returns STYLE_NEUTRAL instead of guessing. Neutral, not AI-ish:
+# a short piece shouldn't push anyone toward an accusation.
+STYLE_MIN_WORDS = 20
+STYLE_NEUTRAL = 0.5
+
+# Sentence length spread: standard deviation of words per sentence.
+# AI prose marches in step; a spread of 3 words or less is very even. Human
+# writing is lumpy; a spread of 12+ words means short and long sentences mixed.
+SPREAD_AI = 3.0
+SPREAD_HUMAN = 12.0
+
+# Lexical variety: unique words / total words (type-token ratio).
+# At 0.60 a quarter-plus of the words are repeats, which reads as a narrow,
+# safe vocabulary; at 0.85 almost every word is new. Only meaningful for
+# texts of a few hundred words or less — the ratio falls as text gets longer.
+TTR_AI = 0.60
+TTR_HUMAN = 0.85
+
+# Punctuation density: punctuation marks per word (apostrophes not counted).
+# 0.08 is roughly one full stop per sentence and nothing else; 0.20 means
+# commas, dashes, colons and quotes on top of that.
+PUNCT_AI = 0.08
+PUNCT_HUMAN = 0.20
+
+
 # ─── Thresholds (Milestone 5) ────────────────────────────────────────────────
 # Where one label becomes another. Scores run 0.0 (confidently human) to 1.0
 # (confidently AI).
