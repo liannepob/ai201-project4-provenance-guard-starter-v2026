@@ -69,7 +69,7 @@ Every error response has the same shape:
 
 | Field | Type | Required | Rules |
 |---|---|---|---|
-| `text` | string | yes | Must contain non-whitespace characters. Very short text (fewer than ~3 tokens) can't be scored and is rejected. Text past ~400 tokens is still accepted, but only the first ~400 tokens are scored by signal one. |
+| `text` | string | yes | Must contain non-whitespace characters. At most 10,000 characters. Very short text (fewer than ~3 tokens) can't be scored and is rejected. Text past ~400 tokens is still accepted, but only the first ~400 tokens are scored by signal one. |
 | `creator_id` | string | yes | Non-empty. Identifies the writer. It isn't checked against any account. |
 
 **Response: `200 OK`**
@@ -98,7 +98,7 @@ Every error response has the same shape:
 
 | Status | `error` | When |
 |---|---|---|
-| 400 | `bad_request` | Body isn't JSON, `text` is missing, not a string, or blank, `creator_id` is missing, or the text is too short to score. Also logged as a rejection. |
+| 400 | `bad_request` | Body isn't JSON, `text` is missing, not a string, blank, or over 10,000 characters, `creator_id` is missing or blank, or the text is too short to score. Nothing is written to the log. |
 | 503 | `detector_unavailable` | The local model couldn't load. |
 
 ### `POST /appeal`

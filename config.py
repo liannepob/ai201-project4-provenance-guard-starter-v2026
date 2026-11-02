@@ -46,6 +46,9 @@ DETECTOR_MODEL = os.getenv("AI201_DETECTOR_MODEL", "gpt2")
 # 300 words, which is enough for the signal to mean something.
 DETECTOR_MAX_TOKENS = 400
 
+# POST /submit refuses anything longer than this with a 400 (criteria.md, #2).
+MAX_TEXT_CHARS = 10_000
+
 
 # ─── Scoring (Milestone 4) ───────────────────────────────────────────────────
 # How much each signal counts toward the combined score.
@@ -94,9 +97,11 @@ PUNCT_HUMAN = 0.20
 # Where one label becomes another. Scores run 0.0 (confidently human) to 1.0
 # (confidently AI).
 #
-#   score < HUMAN_THRESHOLD          -> high-confidence human
-#   between the two                  -> unsure
-#   score > AI_THRESHOLD             -> high-confidence AI
+#   score < HUMAN_THRESHOLD                     -> high-confidence human
+#   HUMAN_THRESHOLD <= score < AI_THRESHOLD     -> unsure
+#   score >= AI_THRESHOLD                       -> high-confidence AI
+#
+# Each boundary belongs to exactly one label, so every score gets exactly one.
 #
 # ⚠️ This is where your false-positive decision from Milestone 1 actually gets
 # made. Widening the unsure band means fewer wrong accusations and more AI text
@@ -104,7 +109,12 @@ PUNCT_HUMAN = 0.20
 # that decide who pays for it.
 
 HUMAN_THRESHOLD = 0.35
-AI_THRESHOLD = 0.65
+AI_THRESHOLD = 0.80
+
+# The exact text a reader sees for each label.
+LABEL_HUMAN = "We think this text was written by a person, because it flows naturally."
+LABEL_UNSURE = "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post."
+LABEL_AI = "Our tools suggest this text was written by an AI tool, but we could be wrong. If you wrote it yourself, you can appeal and it will be marked for review."
 
 # ⚠️ One thing that catches people out in Milestone 5. A weighted average can
 # only land between its two inputs — so while `style_signal` is still the stub

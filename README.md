@@ -42,10 +42,10 @@
 1. **The request arrives** at `POST /submit` (`app.py::submit`). Flask parses
    the body as JSON. *Adds:* a `payload` dict, or an empty one if the body
    wasn't JSON.
-2. **The input is checked.** `text` must be a non-empty string and
-   `creator_id` must be present. If either is wrong, the route stops here and
-   returns a 400, and the rejection is written to the log
-   (`audit.log_rejection`). *Adds:* a guarantee that everything below gets real
+2. **The input is checked.** `text` must be a non-empty string of at most
+   10,000 characters, long enough to score, and `creator_id` must be a
+   non-empty string. If not, the route stops and returns a 400, and nothing is
+   written to the log. *Adds:* a guarantee that everything below gets real
    text.
 3. **A `content_id` is assigned**, a new unique ID for this one submission.
    *Adds:* the handle that the log, the response, and any later appeal all
@@ -113,12 +113,12 @@ human: my "borderline" sample (AI-style content in casual wording) scored
 ### Signal two — the style signal
 
 **What it measures:** The shape of the text, without reading it
-(`stylometry.py::style_signal`). It will use three measures:
-- **Sentence length spread:** the standard deviation of sentence lengths
-  divided by the mean.
+(`stylometry.py::style_signal`). It uses three measures:
+- **Sentence length spread:** the standard deviation of words per sentence.
 - **Type-token ratio:** unique words over total words.
-- **Punctuation density:** especially the more personal marks (semicolons,
-  dashes, colons, parentheses).
+- **Punctuation density:** punctuation marks per word. Every mark counts
+  equally, except apostrophes, which come from contractions and possessives
+  rather than style.
 
 These are combined into a 0–1 score where higher means more likely AI.
 
@@ -176,9 +176,9 @@ borderline model reading back to the right answer.
 
 | Label | Score range | The exact text a reader sees |
 |---|---|---|
-| high-confidence human |  |  |
-| unsure |  |  |
-| high-confidence AI |  |  |
+| high-confidence human | 0.00 – under 0.35 | We think this text was written by a person, because it flows naturally. |
+| unsure | 0.35 – under 0.80 | We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post. |
+| high-confidence AI | 0.80 – 1.00 | Our tools suggest this text was written by an AI tool, but we could be wrong. If you wrote it yourself, you can appeal and it will be marked for review. |
 
 **Why I worded the "unsure" one this way:**
 <!-- It's the hardest of the three. It has to admit uncertainty without
@@ -204,11 +204,18 @@ borderline model reading back to the right answer.
 ```bash
 $ curl -X POST http://127.0.0.1:5000/submit \
   -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+  -d @samples/plain_human.json
 ```
 
 ```json
-
+{
+  "confidence": 0.8216,
+  "content_id": "c_08008ac0b540",
+  "guess": "ai",
+  "label": "Our tools suggest this text was written by an AI tool, but we could be wrong. If you wrote it yourself, you can appeal and it will be marked for review.",
+  "model_score": 0.8567,
+  "style_score": 0.7865
+}
 ```
 
 **An appeal**
@@ -216,21 +223,48 @@ $ curl -X POST http://127.0.0.1:5000/submit \
 ```bash
 $ curl -X POST http://127.0.0.1:5000/appeal \
   -H "Content-Type: application/json" \
-  -d '{"content_id": "...", "reasoning": "..."}'
+  -d '{"content_id": "c_08008ac0b540", "reasoning": "I wrote this myself. English is my second language, so I write plainly."}'
 ```
 
 ```json
-
+{
+  "content_id": "c_08008ac0b540",
+  "message": "We've received your appeal. A person will review this decision.",
+  "status": "under_review"
+}
 ```
 
 **What the log shows afterwards**
 
 ```bash
-$ curl "http://127.0.0.1:5000/log?limit=3"
+$ curl "http://127.0.0.1:5000/log?limit=2"
 ```
 
 ```json
-
+{
+  "count": 2,
+  "entries": [
+    {
+      "combined_score": 0.8216,
+      "content_id": "c_08008ac0b540",
+      "creator_id": "demo_instructor",
+      "guess": "ai",
+      "label": "Our tools suggest this text was written by an AI tool, but we could be wrong. If you wrote it yourself, you can appeal and it will be marked for review.",
+      "model_score": 0.8567,
+      "status": "decided",
+      "style_score": 0.7865,
+      "timestamp": "2026-11-02T00:18:01+00:00"
+    },
+    {
+      "content_id": "c_08008ac0b540",
+      "creator_id": "demo_instructor",
+      "event": "appeal",
+      "reasoning": "I wrote this myself. English is my second language, so I write plainly.",
+      "status": "under_review",
+      "timestamp": "2026-11-02T00:18:01+00:00"
+    }
+  ]
+}
 ```
 
 ---

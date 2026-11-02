@@ -199,18 +199,29 @@ def submit():
     what should this do when `text` is missing, empty, or enormous? A crash on
     a malformed input is one of the most common real failures there is.
     """
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        payload = {}
 
     # Step 2 - JSON goes in: pull text and creator_id out of the body
     text = payload.get("text")
     creator_id = payload.get("creator_id")
     if not isinstance(text, str) or not text.strip():
         return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
+    if len(text) > config.MAX_TEXT_CHARS:
+        return jsonify({"error": "bad_request", "message": f"\"text\" can't be longer than {config.MAX_TEXT_CHARS} characters."}), 400
+    if not isinstance(creator_id, str) or not creator_id.strip():
+        return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"creator_id\"."}), 400
 
     # Step 3 - one real signal that we first tested from the terminal
     # python detector.py "some text"
     import detector
-    model_score = detector.model_signal(text)
+    try:
+        model_score = detector.model_signal(text)
+    except ValueError:
+        return jsonify({"error": "bad_request", "message": "\"text\" is too short to score. Send a few sentences at least."}), 400
+    except detector.DetectorUnavailable:
+        return jsonify({"error": "detector_unavailable", "message": "The detector model couldn't load. Try again later."}), 503
 
     # Step 5 - the second signal: the shape of the text, not its meaning
     import stylometry
@@ -220,23 +231,28 @@ def submit():
     import scoring
     combined_score = round(scoring.combine_signals(model_score, style_score), 4)
 
+    # Step 8 - the number becomes words (cutoffs and text: config.py)
+    guess, label = scoring.score_to_label(combined_score)
+
     # Step 4 - log the decision. The content_id is what /appeal needs later.
     # Step 7 - all three scores go in the log, not just the combined one.
     content_id = f"c_{uuid.uuid4().hex[:12]}"
     audit.log_decision(
         content_id=content_id,
         creator_id=creator_id,
+        guess=guess,
         model_score=model_score,
         style_score=style_score,
         combined_score=combined_score,
+        label=label,
         status="decided",
     )
 
     return jsonify({
         "content_id": content_id,
-        "guess": "unsure",
+        "guess": guess,
         "confidence": combined_score,
-        "label": "not built yet",
+        "label": label,
         "model_score": model_score,
         "style_score": style_score,
     }), 200
@@ -262,14 +278,30 @@ def appeal():
     to the person on the other end. It's the only thing standing between a
     wrong accusation and nothing at all.
     """
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        payload = {}
 
-    # TODO: delete this and build the route.
+    content_id = payload.get("content_id")
+    reasoning = payload.get("reasoning")
+    if not isinstance(content_id, str) or not content_id.strip():
+        return jsonify({"error": "bad_request", "message": "Send JSON with a \"content_id\"."}), 400
+    if not isinstance(reasoning, str) or not reasoning.strip():
+        return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"reasoning\"."}), 400
+
+    # The content_id has to belong to a real submission. Nothing is logged if not.
+    entries = audit.entries_for(content_id)
+    if not entries:
+        return jsonify({"error": "not_found", "message": f"No submission found with content_id \"{content_id}\"."}), 404
+
+    # Appended after the original decision, which stays in the log untouched.
+    audit.log_appeal(content_id, entries[0].get("creator_id"), reasoning)
+
     return jsonify({
-        "error": "not_implemented",
-        "message": "POST /appeal isn't built yet — see the TODO in app.py.",
-        "you_sent": payload,
-    }), 501
+        "content_id": content_id,
+        "status": "under_review",
+        "message": "We've received your appeal. A person will review this decision.",
+    }), 200
 
 
 # ── Already works ─────────────────────────────────────────────────────────────
