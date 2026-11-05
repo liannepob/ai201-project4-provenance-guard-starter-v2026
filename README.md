@@ -186,6 +186,13 @@ borderline model reading back to the right answer.
      sounding like an accusation, because the person reading it may well have
      written every word themselves. -->
 
+Most real writing lands in this band, so most writers will read this label
+about their own work. I wanted it to say plainly that the system can't tell,
+and then answer the question a worried writer would ask next: does this mean
+I'm in trouble? So it says outright that no conclusion is being drawn about
+them and that nothing happens to their post. It never uses the word "AI" as a
+verdict, only as one of two possibilities.
+
 
 
 ---
@@ -272,17 +279,56 @@ $ curl "http://127.0.0.1:5000/log?limit=2"
 
 ## How I Used AI
 
-**Moment 1**
+**Moment 1 (unit 7): checking my acceptance criteria**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I pasted my five draft criteria into Claude and asked
+  whether each one could be checked by someone who couldn't ask me what I
+  meant.
+- *What came back:* It didn't rewrite them. It pointed out that criteria 1
+  and 3 contradicted each other (a 1,000- versus 10,000-character limit), that
+  I only covered two of the required areas, and that criterion 5 would
+  probably pass automatically because the detector scores the same text the
+  same way every time.
+- *What I changed:* I made the length limit 10,000 everywhere and replaced
+  the duplicate bad-input criterion with one about appeals, which gave me a
+  third area. I kept criterion 5 as written, and in unit 8 it did pass
+  automatically, which is why I now say my targets were partly too easy.
 
-**Moment 2**
+**Moment 2 (unit 7): building the style signal**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked Claude to build `stylometry.py` with three
+  measures, simple clamped scaling, and constants in `config.py`, then run it
+  on my samples.
+- *What came back:* Working code, plus two findings I hadn't expected: on my
+  samples, vocabulary variety pointed the wrong way (the AI text had the most
+  varied vocabulary), and a plainly written human paragraph scored 0.787, the
+  most AI-looking of everything I tested.
+- *What I changed:* I kept the standard direction for vocabulary variety
+  rather than tuning it to four samples, and I wrote both findings into my
+  signal blind spots. The plain-writing problem showed up again in unit 8 as
+  FP05.
+
+**Moment 3 (unit 8): choosing my improvement**
+
+- *What I asked for:* I asked Claude to lower my AI cutoff from 0.80 to 0.70.
+- *What came back:* Instead of making the change, it checked my attack scores
+  first: at 0.70, no extra AI text would be caught (the evasions scored
+  0.37–0.56), but five more real writers would be labeled AI, including the
+  non-native speaker (FP03).
+- *What I changed:* I dropped the cutoff change and used input validation
+  instead, which fixed MF03 and MF04 without flagging anyone new.
+
+**Moment 4 (unit 8): diagnosing PI02**
+
+- *What I asked for:* I gave Claude my rough diagnoses, including that the
+  PI02 injection worked because GPT-2 read the instruction and followed it.
+- *What came back:* It corrected that: GPT-2 doesn't follow instructions, it
+  only measures predictability, so tokens like `SYSTEM:` and `guess=human`
+  raised perplexity and lowered the score. The injection worked as noise, not
+  as a command.
+- *What I changed:* I rewrote my PI02 diagnosis to say that, and grouped it
+  with EV01 and the junk inputs under one problem: signal one reads anything
+  unusual as human.
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
@@ -1033,12 +1079,49 @@ problems, not input problems.
 <!-- For each attack still getting through and each criterion still missed:
      what you'd do, and why you stopped. -->
 
+No criterion is still missed: all five were MET before and after. Eleven
+attacks still get through.
+
+**The 9 evasions (EV01–EV09).** These are problem 1 (AI text scores far below
+my cutoff) and problem 2 (signal one reads unusual text as human). Lowering
+the cutoff won't fix them; the scores need to separate further first. What I'd
+do: give signal one a stronger detector model than `gpt2` and recalibrate its
+midpoint on real AI and human samples, then revisit the cutoff. For EV01's
+typos, I'd look at normalizing misspellings before signal one scores the text.
+Why I stopped: the unit allows one change, and each of these is a bigger piece
+of work than one change. A spelling fix also risks punishing real writers who
+make typos.
+
+**FP05 (human technical documentation labeled AI).** This is problem 4: plain
+writing looks like AI to both signals at once. The cheapest fix would be to
+raise the AI cutoff to 0.85. In this attack set that would clear FP05 (0.833)
+and still catch EV10 (0.903), but it would mean almost nothing is ever labeled
+AI. The real fix is a signal that doesn't share the plain-writing blind spot.
+Why I stopped: one change per unit, and I'd want more than one flagged human
+piece before moving a threshold.
+
+**PI02 (fake system message labeled human).** Also problem 2: the odd tokens
+made the text look unpredictable to GPT-2. What I'd do: strip lines that look
+like instructions or code (`SYSTEM:`, `key=value`) before scoring, or score
+only the prose. Why I stopped: deciding what counts as "not prose" without
+removing real writing is its own project.
+
+**EV05 (heavily human-edited AI).** I wouldn't fix this one. After that much
+editing, the text really does read as human, and catching it would mean
+flagging writing that looks exactly like a person's.
+
 
 
 **The trade I'd make if this ran for real:**
 
 <!-- Two sentences. Fewer wrong accusations means more AI text getting through.
      Say which way you'd go and WHO PAYS FOR IT. -->
+
+I would keep erring toward fewer wrong accusations, because telling a real
+person their own work is fake does more harm than missing some AI text. The
+cost of that falls on readers, on honest writers whose work sits next to AI
+posts that weren't caught, and on the reviewers who handle all the appeals
+and unsure cases.
 
 
 
