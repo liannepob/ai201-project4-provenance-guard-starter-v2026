@@ -451,17 +451,351 @@ only way to clear it.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |
+| 1. My own writing labeled high-confidence AI | ≤ 2 of 10 | 0/10 | 0/10 | 0/10 | MET |
+| 2. Bad input gets a 400 and no log entry | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 3. Appeals reach `under_review` in the log; unknown id gets a 404 and changes nothing | 5 of 5 + 404 | 5/5, 404 | 5/5, 404 | 5/5, 404 | MET |
+| 4. Formal writing labeled high-confidence AI | ≤ 1 of 5 | 0/5 | 0/5 | 0/5 | MET |
+| 5. Same text 5 times: score spread and label | ≤ 0.10, same label | 0.00, same | 0.00, same | 0.00, same | MET |
+
+Sources: criteria 1, 2, 4 and 5 from `results/run_2026-11-04_1840_before.md`
+(`run_eval.py::main`). Criterion 3 from `results/appeals_2026-11-04_1800_before.md`
+(`run_appeals.py::main`), a script I added because `run_eval.py` only sends to
+`/submit` and an appeal needs a real `content_id` first. For criterion 2's "no
+log entry" part, `GET /health` showed 180 log entries before the run and 240
+after: exactly the 60 decisions from criteria 1, 4 and 5, so the 9 bad-input
+requests added nothing. All three trials came out identical for every
+criterion, as expected, since neither signal is random.
 
 **Real output from one trial**, pasted as text, naming the file and function
-that produced it:
+that produced it. All from trial 1.
+
+*Criterion 1, my own writing* (`run_eval.py::main`, `results/run_2026-11-04_1840_before.md`):
 
 ```json
+[
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5458,
+    "model_score": 0.5917,
+    "style_score": 0.5,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Last weekend I was with friends and I went around the city."
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6667,
+    "model_score": 0.5048,
+    "style_score": 0.8286,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "To make bubble tea first I would boil some water for the pearls and th"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6529,
+    "model_score": 0.8058,
+    "style_score": 0.5,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "When something went wrong I first took a step back and addressed the s"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.497,
+    "model_score": 0.6237,
+    "style_score": 0.3704,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "My favorite place to be at is my bed room with some privacy and being "
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6376,
+    "model_score": 0.6084,
+    "style_score": 0.6667,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "In my opinion the new Spiderman movie was really good just really long"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.2401,
+    "model_score": 0.4601,
+    "style_score": 0.02,
+    "label": "We think this text was written by a person, because it flows naturally.",
+    "sent": "I would let a friend know in this way, \"Hey im running late right now,"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.2051,
+    "model_score": 0.2101,
+    "style_score": 0.2,
+    "label": "We think this text was written by a person, because it flows naturally.",
+    "sent": "I first wake up, brush teeth and then make bed, do skincare, change, a"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.4615,
+    "model_score": 0.2579,
+    "style_score": 0.6651,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Right now in Calculus 3 we are learning about double integrals which i"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.3483,
+    "model_score": 0.1183,
+    "style_score": 0.5784,
+    "label": "We think this text was written by a person, because it flows naturally.",
+    "sent": "Someone who influenced me was a family member they push me to work har"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.2878,
+    "model_score": 0.0756,
+    "style_score": 0.5,
+    "label": "We think this text was written by a person, because it flows naturally.",
+    "sent": "I want to push my web application to the app store by learning swift a"
+  }
+]
+```
 
+*Criterion 2, bad input* (`run_eval.py::main`, same file):
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"creator_id\": \"eval_bad_missing\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "(empty text)"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+]
+```
+
+*Criterion 3, appeals* (`run_appeals.py::main`, `results/appeals_2026-11-04_1800_before.md`):
+
+```json
+{
+  "appeals": [
+    {
+      "submit_status": 200,
+      "content_id": "c_7b6063c523a4",
+      "appeal_status": 200,
+      "appeal_response": {
+        "content_id": "c_7b6063c523a4",
+        "message": "We've received your appeal. A person will review this decision.",
+        "status": "under_review"
+      },
+      "log_statuses": [
+        "decided",
+        "under_review"
+      ],
+      "in_log_as_under_review": true
+    },
+    {
+      "submit_status": 200,
+      "content_id": "c_df64132ed2d1",
+      "appeal_status": 200,
+      "appeal_response": {
+        "content_id": "c_df64132ed2d1",
+        "message": "We've received your appeal. A person will review this decision.",
+        "status": "under_review"
+      },
+      "log_statuses": [
+        "decided",
+        "under_review"
+      ],
+      "in_log_as_under_review": true
+    },
+    {
+      "submit_status": 200,
+      "content_id": "c_034a69c3c44b",
+      "appeal_status": 200,
+      "appeal_response": {
+        "content_id": "c_034a69c3c44b",
+        "message": "We've received your appeal. A person will review this decision.",
+        "status": "under_review"
+      },
+      "log_statuses": [
+        "decided",
+        "under_review"
+      ],
+      "in_log_as_under_review": true
+    },
+    {
+      "submit_status": 200,
+      "content_id": "c_34acb1da53a4",
+      "appeal_status": 200,
+      "appeal_response": {
+        "content_id": "c_34acb1da53a4",
+        "message": "We've received your appeal. A person will review this decision.",
+        "status": "under_review"
+      },
+      "log_statuses": [
+        "decided",
+        "under_review"
+      ],
+      "in_log_as_under_review": true
+    },
+    {
+      "submit_status": 200,
+      "content_id": "c_a33b41f13289",
+      "appeal_status": 200,
+      "appeal_response": {
+        "content_id": "c_a33b41f13289",
+        "message": "We've received your appeal. A person will review this decision.",
+        "status": "under_review"
+      },
+      "log_statuses": [
+        "decided",
+        "under_review"
+      ],
+      "in_log_as_under_review": true
+    }
+  ],
+  "appeals_under_review": 5,
+  "unknown_id": {
+    "status": 404,
+    "response": {
+      "error": "not_found",
+      "message": "No submission found with content_id \"c_unknown_trial1\"."
+    },
+    "log_entries_before": 100,
+    "log_entries_after": 100
+  }
+}
+```
+
+*Criterion 4, formal writing* (`run_eval.py::main`, `results/run_2026-11-04_1840_before.md`):
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3807,
+    "model_score": 0.4999,
+    "style_score": 0.2615,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "I am a sophmore in college and I am studying Computer Science, I want "
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.543,
+    "model_score": 0.4721,
+    "style_score": 0.6138,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Dear Professor Bob, I was wondering If I was able to reschedule time f"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.2182,
+    "model_score": 0.3586,
+    "style_score": 0.0778,
+    "label": "We think this text was written by a person, because it flows naturally.",
+    "sent": "I created a website/web application for individuals with food allergie"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3679,
+    "model_score": 0.3485,
+    "style_score": 0.3873,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "I agree that AI should not be used when first learning about a subject"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3507,
+    "model_score": 0.3983,
+    "style_score": 0.303,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "To whom it may concern, I ordered 10 Piece cooking pot and it only cam"
+  }
+]
+```
+
+*Criterion 5, same text five times* (`run_eval.py::main`, same file):
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3689,
+    "model_score": 0.3489,
+    "style_score": 0.3888,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Time management matters more than people admit, especially now that wo"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3689,
+    "model_score": 0.3489,
+    "style_score": 0.3888,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Time management matters more than people admit, especially now that wo"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3689,
+    "model_score": 0.3489,
+    "style_score": 0.3888,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Time management matters more than people admit, especially now that wo"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3689,
+    "model_score": 0.3489,
+    "style_score": 0.3888,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Time management matters more than people admit, especially now that wo"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.3689,
+    "model_score": 0.3489,
+    "style_score": 0.3888,
+    "label": "We aren't sure whether this text was written by a person or by an AI tool. We are not drawing any conclusion about you or your work, and nothing will happen to your post.",
+    "sent": "Time management matters more than people admit, especially now that wo"
+  }
+]
 ```
 
 **Diagnoses**

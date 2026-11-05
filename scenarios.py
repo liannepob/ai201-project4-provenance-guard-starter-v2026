@@ -41,8 +41,16 @@ SCENARIOS = [
         # things you actually wrote. This is the criterion that matters most and
         # it's meaningless with someone else's prose.
         "texts": [
-            "REPLACE ME with a paragraph you wrote yourself.",
-            "REPLACE ME with another one. Ten pieces is the usual number.",
+            "Last weekend I was with friends and I went around the city.",
+            "To make bubble tea first I would boil some water for the pearls and then I would make the tea with some drink mix and then I will add ice and then combine them together.",
+            "When something went wrong I first took a step back and addressed the situation and then came up with different types of solutions that would work for this situation and then decided on what i was going to do.",
+            "My favorite place to be at is my bed room with some privacy and being able to sleep, get work done, and eat in the same place.",
+            "In my opinion the new Spiderman movie was really good just really long I thought that it was very entertaining but I was not expecting it to be that long.",
+            'I would let a friend know in this way, "Hey im running late right now, I will let you know once im 5 minutes out."',
+            "I first wake up, brush teeth and then make bed, do skincare, change, and then leave room to get breakfast then go study or go class",
+            "Right now in Calculus 3 we are learning about double integrals which is partial integration, you first integrate with respect to d value closest to the equation and then continue to the last d value and then you simplify and get the solution",
+            "Someone who influenced me was a family member they push me to work hard each day, but also have a good balance with work and not overowkr myself since a good work life balance is real worth",
+            "I want to push my web application to the app store by learning swift and then adding a gemini api key into it and create real revenue from users",
         ],
     },
     {
@@ -66,7 +74,11 @@ SCENARIOS = [
         # ⚠️ Five formal pieces YOU wrote — a cover letter, a report, an essay.
         # Separate from the ten above.
         "texts": [
-            "REPLACE ME with a formal piece you wrote yourself.",
+            "I am a sophmore in college and I am studying Computer Science, I want to work for your company to use my technical skills form school and personal projects in a corprate work setting with others. I have proficency in SQL, python, CSS, HTML, Javascript and Java. Thank you for your consideration.",
+            "Dear Professor Bob, I was wondering If I was able to reschedule time for me to take Quiz 4 as I have a family event I need to attend.",
+            "I created a website/web application for individuals with food allergies to dine out safely by tracking different places to eat at, and track their allergies on the websie. I used CSS, HTML, Python, SQL, GooglePlaces API, SendGrid API, and JSON to complete this.",
+            "I agree that AI should not be used when first learning about a subject like computer science fundumentals since it can taint the understanding of computer science at an early stage making you think that you understand the topic when you dont acutally. I think it is best saved for people who have been in the industry or students alreayd proficicient in coding.",
+            "To whom it may concern, I ordered 10 Piece cooking pot and it only came with 9 pieces, I would like a partial refund or an exchange of this product if possible. Best",
         ],
     },
     {
