@@ -210,6 +210,12 @@ def submit():
         return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}), 400
     if len(text) > config.MAX_TEXT_CHARS:
         return jsonify({"error": "bad_request", "message": f"\"text\" can't be longer than {config.MAX_TEXT_CHARS} characters."}), 400
+    # Unit 8 improvement: junk with no real words used to reach the signals and
+    # come back labeled human (MF03, MF04). Refuse it before anything scores it.
+    if any(ord(ch) < 32 and ch not in "\n\r\t" for ch in text):
+        return jsonify({"error": "bad_request", "message": "\"text\" contains control characters."}), 400
+    if not any(ch.isalpha() for ch in text):
+        return jsonify({"error": "bad_request", "message": "\"text\" has no letters in it, so there's nothing to score."}), 400
     if not isinstance(creator_id, str) or not creator_id.strip():
         return jsonify({"error": "bad_request", "message": "Send JSON with a non-empty \"creator_id\"."}), 400
 

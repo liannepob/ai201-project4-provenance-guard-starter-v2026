@@ -43,7 +43,8 @@
    the body as JSON. *Adds:* a `payload` dict, or an empty one if the body
    wasn't JSON.
 2. **The input is checked.** `text` must be a non-empty string of at most
-   10,000 characters, long enough to score, and `creator_id` must be a
+   10,000 characters, long enough to score, with at least one letter and no
+   control characters (added in unit 8), and `creator_id` must be a
    non-empty string. If not, the route stops and returns a 400, and nothing is
    written to the log. *Adds:* a guarantee that everything below gets real
    text.
@@ -892,13 +893,120 @@ mistake here.
 ## The Improvement
 
 **What I changed:**
+I added input validation to `app.py::submit`. Before any signal runs, the route
+now refuses text that contains control characters, or that has no letters in
+it at all, with a 400 and a plain error message. Nothing else changed: same
+signals, same 50/50 weights, same 0.35 and 0.80 cutoffs, same labels.
 
 **Which diagnosis pointed at it:**
+Problem 3: the route let junk through to the signals. MF03 (control
+characters) and MF04 (only punctuation) were labeled "We think this text was
+written by a person", because the route only checked that `text` wasn't blank.
+I picked this over moving a threshold because lowering the AI cutoff to 0.70
+would have caught no extra AI text (the evasions score 0.37–0.56) while
+labeling five more real writers as AI (FP02, FP03, FP04, FP06, FP07). The rule
+also had to keep accepting FP08, a genuine three-sentence human post, so I
+didn't add a minimum length.
 
 ### Attack Run — After
 
 <!-- Same format. `run_attacks.py --label after` -->
 
+Source: `results/attack_run_2026-11-04_1850_after.md`, produced by
+`run_attacks.py --set attack_set --label after`. Same marking rule as before.
+
+| Family | Before: HELD / BROKE | After: HELD / BROKE |
+|---|---|---|
+| evasion | 1 / 9 | 1 / 9 |
+| false_positive | 7 / 1 | 7 / 1 |
+| prompt_injection | 5 / 1 | 5 / 1 |
+| malformed (text) | 6 / 2 | **8 / 0** |
+| malformed (request) | 12 / 0 | 12 / 0 |
+| flood_same_creator | 12 / 0 | 12 / 0 |
+| **Total** | **43 / 13** | **45 / 11** |
+
+Only three rows changed between the two runs:
+
+| Attack | Before | After |
+|---|---|---|
+| MF03, control characters | 200, `human` (0.250), BROKE | 400, HELD |
+| MF04, only punctuation | 200, `human` (0.256), BROKE | 400, HELD |
+| MF06, emoji only | 200, `unsure` (0.749), HELD | 400, HELD |
+
+| ID | Family | Targeting | Status | Content ID | Guess | Score | Verdict |
+|---|---|---|---|---|---|---|---|
+| EV01 | evasion | signal two: typos raise word variety | 200 | `c_9d0a1a90c2e1` | human | 0.346 | BROKE |
+| EV02 | evasion | signal two: broken-up sentences raise length spread | 200 | `c_250d7bf4cd8e` | unsure | 0.445 | BROKE |
+| EV03 | evasion | signal two: a pasted quotation changes the shape | 200 | `c_712ab43f1a5f` | unsure | 0.525 | BROKE |
+| EV04 | evasion | signal one: unusual words raise perplexity | 200 | `c_4dd03fa38d6f` | unsure | 0.556 | BROKE |
+| EV05 | evasion | both signals: heavy human editing pass | 200 | `c_88819f9a7d5d` | human | 0.332 | BROKE |
+| EV06 | evasion | signal two: one very long sentence and one very short | 200 | `c_b480dbc21c84` | unsure | 0.510 | BROKE |
+| EV07 | evasion | signal two: padding with punctuation | 200 | `c_7c0dd4c1ee30` | unsure | 0.370 | BROKE |
+| EV08 | evasion | signal one: text below the token window | 200 | `c_e97cc5197ae3` | unsure | 0.373 | BROKE |
+| EV09 | evasion | both: AI text with a human opening paragraph bolted on | 200 | `c_3c5954a19379` | unsure | 0.560 | BROKE |
+| EV10 | evasion | signal two: repeated stanza structure | 200 | `c_87e7998761bb` | ai | 0.903 | HELD |
+| FP01 | false_positive | plain, clear human writing with no flourishes | 200 | `c_55628eee764e` | unsure | 0.659 | HELD |
+| FP02 | false_positive | human writing in a formal register | 200 | `c_55ed7bf63bdf` | unsure | 0.761 | HELD |
+| FP03 | false_positive | a non-native English speaker writing carefully | 200 | `c_dc110a64767a` | unsure | 0.798 | HELD |
+| FP04 | false_positive | a student essay written to a rubric | 200 | `c_0bbeb0c55919` | unsure | 0.702 | HELD |
+| FP05 | false_positive | technical documentation written by a person | 200 | `c_0ad1e16628d5` | ai | 0.833 | BROKE |
+| FP06 | false_positive | a person imitating a formal template | 200 | `c_332509e15087` | unsure | 0.763 | HELD |
+| FP07 | false_positive | human writing that repeats a phrase deliberately | 200 | `c_914e8375fbbd` | unsure | 0.781 | HELD |
+| FP08 | false_positive | very short genuine human submission | 200 | `c_a8d89c8428de` | unsure | 0.411 | HELD |
+| PI01 | prompt_injection | instruction to ignore the check | 200 | `c_3773d029474d` | unsure | 0.485 | HELD |
+| PI02 | prompt_injection | instruction disguised as a system message | 200 | `c_1136a63924a1` | human | 0.234 | BROKE |
+| PI03 | prompt_injection | instruction wrapped in the writer's voice | 200 | `c_03e911873f51` | unsure | 0.533 | HELD |
+| PI04 | prompt_injection | attempt to make the label text hostile | 200 | `c_772c7e07b6b7` | unsure | 0.379 | HELD |
+| PI05 | prompt_injection | attempt to inject into the audit log | 200 | `c_c1f905f10bd7` | unsure | 0.411 | HELD |
+| PI06 | prompt_injection | instruction plus real human text | 200 | `c_d113aecbe2c5` | unsure | 0.635 | HELD |
+| MF01 | malformed | text is only whitespace | 400 | `—` | — | — | HELD |
+| MF02 | malformed | text is a single character | 400 | `—` | — | — | HELD |
+| MF03 | malformed | text is control characters | 400 | `—` | — | — | HELD |
+| MF04 | malformed | text is only punctuation | 400 | `—` | — | — | HELD |
+| MF05 | malformed | text is a very long single word | 200 | `c_9ead6c104016` | unsure | 0.749 | HELD |
+| MF06 | malformed | text is emoji only | 400 | `—` | — | — | HELD |
+| MF07 | malformed | text is right-to-left script | 200 | `c_a8ce4bcc5c91` | unsure | 0.703 | HELD |
+| MF08 | malformed | text is 60,000 characters | 400 | `—` | — | — | HELD |
+| RQ01 | malformed | no text field at all | 400 | `—` | — | — | HELD |
+| RQ02 | malformed | no creator_id | 400 | `—` | — | — | HELD |
+| RQ03 | malformed | text is a number | 400 | `—` | — | — | HELD |
+| RQ04 | malformed | text is a list | 400 | `—` | — | — | HELD |
+| RQ05 | malformed | text is null | 400 | `—` | — | — | HELD |
+| RQ06 | malformed | creator_id is an object | 400 | `—` | — | — | HELD |
+| RQ07 | malformed | body is a JSON array, not an object | 400 | `—` | — | — | HELD |
+| RQ08 | malformed | body is unparseable JSON | 400 | `—` | — | — | HELD |
+| RQ09 | malformed | body is empty | 400 | `—` | — | — | HELD |
+| RQ10 | malformed | body is form-encoded, not JSON | 400 | `—` | — | — | HELD |
+| RQ11 | malformed | body is JSON claiming to be plain text | 400 | `—` | — | — | HELD |
+| RQ12 | malformed | deeply nested JSON | 400 | `—` | — | — | HELD |
+| FL01_01 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_602433f5295c` | human | 0.264 | HELD |
+| FL01_02 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_03d461d98595` | human | 0.264 | HELD |
+| FL01_03 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_45e839af74a8` | human | 0.264 | HELD |
+| FL01_04 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_daea265f6280` | human | 0.264 | HELD |
+| FL01_05 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_7a54de6f6850` | human | 0.264 | HELD |
+| FL01_06 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_ad53bc502ed7` | human | 0.264 | HELD |
+| FL01_07 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_435161dd83ee` | human | 0.264 | HELD |
+| FL01_08 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_e016beaa08c0` | human | 0.264 | HELD |
+| FL01_09 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_f327dde7d5bb` | human | 0.264 | HELD |
+| FL01_10 | flood_same_creator | 20 rapid submissions from one creator | 200 | `c_c92eb39a5dd9` | human | 0.264 | HELD |
+| FL01_11 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
+| FL01_12 | flood_same_creator | 20 rapid submissions from one creator | 429 | `—` | — | — | HELD |
+
+**My five criteria, after.** `run_eval.py --label after`
+(`results/run_2026-11-04_1850_after.md`) and `run_appeals.py --label after`
+(`results/appeals_2026-11-04_1850_after.md`):
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. My own writing labeled high-confidence AI | ≤ 2 of 10 | 0/10 | 0/10 | 0/10 | MET |
+| 2. Bad input gets a 400 and no log entry | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 3. Appeals reach `under_review`; unknown id gets a 404 and changes nothing | 5 of 5 + 404 | 5/5, 404 | 5/5, 404 | 5/5, 404 | MET |
+| 4. Formal writing labeled high-confidence AI | ≤ 1 of 5 | 0/5 | 0/5 | 0/5 | MET |
+| 5. Same text 5 times: score spread and label | ≤ 0.10, same label | 0.00, same | 0.00, same | 0.00, same | MET |
+
+Every response in the after evaluation was identical to the before one, and
+the log rose by exactly 60 decisions (279 → 339), so the bad inputs still wrote
+nothing.
 
 
 **Did it help, and how do I know:**
@@ -906,6 +1014,16 @@ mistake here.
 <!-- Widening the unsure band usually fixes one problem and creates another.
      Reporting that trade honestly is worth full credit. -->
 
+It helped, but only with the problem it was aimed at. The two junk inputs that
+were being labeled human now get a 400 and never reach the signals, so
+malformed text went from 2 broken to 0. I know nothing else got worse because
+every other attack returned the same status, label and score as before, and
+all five of my criteria returned identical output, including all 15 of my own
+pieces still being accepted and scored. MF06 (emoji only) also changed, from
+`unsure` to a 400; it was already HELD, and refusing it is the more honest
+answer since there's nothing to score. What it didn't touch: the 9 evasions,
+FP05 and PI02 are still broken, because those are signal and threshold
+problems, not input problems.
 
 
 ---
