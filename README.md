@@ -814,6 +814,77 @@ that produced it. All from trial 1.
 
      Look for a pattern. Five failures on one signal is one problem, not five. -->
 
+**How I reached each verdict.** A criterion is MET only if its target held in
+all three trials. All five did, and all three trials were identical every time.
+
+1. **MET.** 0 of my 10 pieces got the AI label in any trial; the highest score
+   was 0.667, under the 0.80 cutoff.
+2. **MET.** All 3 bad inputs got a 400 in every trial, and the log count rose by
+   exactly the 60 real decisions, so the bad inputs wrote nothing.
+3. **MET.** 5 of 5 appeals showed `under_review` in the log in every trial, and
+   the unknown id got a 404 with the log count unchanged.
+4. **MET.** 0 of 5 formal pieces got the AI label in any trial.
+5. **MET.** The five scores were identical in every trial (spread 0.00), with
+   the same label each time.
+
+**Were my targets too easy?** Partly, yes. Criterion 5 could not really fail:
+both signals are deterministic, so the same text always gets the same score.
+Criteria 1 and 4 passed, but my test pieces were one or two sentences each, so
+the style signal couldn't measure sentence spread on them, and the attack set
+still got a real writer labeled AI (FP05) with another at 0.798 (FP03). The
+criterion I'd tighten is **criterion 1**: test it on full paragraphs of plain
+and technical writing, the kind that actually got flagged, not short answers.
+
+**The 13 broken attacks come down to four problems.**
+
+**Problem 1. Label mapping: AI text scores far below my AI cutoff.**
+EV02, EV03, EV04, EV06, EV07, EV09 (combined 0.370–0.560, all `unsure`).
+In most of these, signal one still leaned AI (model 0.573–0.704), so the
+attacks didn't fool it much. The problem is that my signals don't push AI text
+anywhere near 0.80: even my unedited AI sample from unit 7 scored 0.594. With a
+50/50 average, AI text lands around 0.4–0.6, and `score_to_label` only says AI
+at 0.80 or above, so these attacks barely had to move the score. The stage is
+the label mapping; the mechanism is that my two signals don't separate AI from
+human widely enough for the cutoff to catch ordinary AI text. EV07 also fooled
+signal two: padding every sentence with "; and, moreover," raised punctuation
+density so much that the style score fell to 0.154.
+
+**Problem 2. Signal one reads anything unusual as human.**
+EV01 (model 0.164), EV08 (0.245), PI02 (0.204), MF03 (0.000), MF04 (0.011).
+Signal one measures how predictable the text is to GPT-2. Anything GPT-2
+rarely sees raises perplexity and lowers the score: misspellings like
+"poistioned" and "thsi" (EV01), very short text (EV08), and odd tokens like
+`SYSTEM:`, `guess=human` and `confidence=0.02` (PI02). PI02 is not the model
+following an instruction; GPT-2 can't follow instructions. The injection worked
+as noise, not as a command, and signal two also read it as human (0.263). EV01
+was aimed at signal two, but signal one is what broke: the style score stayed
+at 0.529, and the 50/50 average landed at 0.346, just under my 0.35 human
+cutoff. For EV08, signal two had nothing to say: under 20 words it returns the
+neutral 0.500 by design.
+
+**Problem 3. The route lets junk through to the signals.**
+MF03 (control characters) and MF04 (only punctuation) were told "We think this
+text was written by a person." `app.py::submit` only checks that `text` is not
+blank, so text with no real words still reached the signals. Signal one scored
+it near 0, because GPT-2 can't predict junk, and signal two returned the neutral
+0.500 because there were too few words, so the average landed in the human
+band. The stage is the route; the mechanism is that it checks for emptiness but
+not for real words.
+
+**Problem 4. Plain human writing looks like AI to both signals.**
+FP05 (technical documentation) scored model 0.801, style 0.865, combined 0.833,
+and got the AI label. Short, plain instructions use common words in a
+predictable order, which raises signal one, and sit at even lengths with
+little punctuation, which raises signal two. Both signals share this blind
+spot, so when they agree on plain writing, the agreement isn't independent
+evidence. The stages are signal one and signal two together; the combining rule
+can't correct it, because averaging two wrong answers is still wrong.
+
+**EV05** (heavy human editing) is marked BROKE by my rule, because AI text
+ended up labeled human (0.332). But both signals were low because, after a
+heavy edit, the text really does read as human. I don't think any stage made a
+mistake here.
+
 
 
 ---
