@@ -1,0 +1,72 @@
+[
+  {
+    "run": 1,
+    "status": 200,
+    "client_seconds": 3.748,
+    "request_id": "r_7bfba23ff8",
+    "server_seconds": 3.741
+  },
+  {
+    "run": 2,
+    "status": 200,
+    "client_seconds": 0.1,
+    "request_id": "r_40a9510843",
+    "server_seconds": 0.09
+  },
+  {
+    "run": 3,
+    "status": 200,
+    "client_seconds": 0.075,
+    "request_id": "r_ff0aafc9e0",
+    "server_seconds": 0.066
+  },
+  {
+    "run": 4,
+    "status": 200,
+    "client_seconds": 0.089,
+    "request_id": "r_801fcd33ae",
+    "server_seconds": 0.085
+  },
+  {
+    "run": 5,
+    "status": 200,
+    "client_seconds": 0.075,
+    "request_id": "r_98182842f9",
+    "server_seconds": 0.07
+  },
+  {
+    "run": 6,
+    "status": 200,
+    "client_seconds": 0.092,
+    "request_id": "r_68e3f104db",
+    "server_seconds": 0.085
+  },
+  {
+    "run": 7,
+    "status": 200,
+    "client_seconds": 0.102,
+    "request_id": "r_1a6d71474a",
+    "server_seconds": 0.093
+  },
+  {
+    "run": 8,
+    "status": 200,
+    "client_seconds": 0.09,
+    "request_id": "r_a163249ab9",
+    "server_seconds": 0.084
+  },
+  {
+    "run": 9,
+    "status": 200,
+    "client_seconds": 0.084,
+    "request_id": "r_9cd8307b32",
+    "server_seconds": 0.076
+  },
+  {
+    "run": 10,
+    "status": 200,
+    "client_seconds": 0.117,
+    "request_id": "r_464c195cb8",
+    "server_seconds": 0.111
+  }
+]
