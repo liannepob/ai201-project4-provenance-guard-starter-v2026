@@ -1160,4 +1160,26 @@ and unsure cases.
 
 ---
 
+## Capstone
+
+**What This Extends**
+
+Provenance Guard (my unit 7/8 project, same repository). What's new: an
+operational layer around the service. Every request, including failed and
+rejected ones, now leaves a structured record with a duration, and the cost of
+one run is measured instead of guessed.
+
+**The Shape**
+
+Shape A, deploy and instrument, on Path B (local with logs). The extension is a
+request log (`logs/requests.jsonl`), a documented start command and
+environment in `RUNNING.md`, and a measured cost per run.
+
+Out of scope: I'm not changing the detector, the stylometry, the scoring
+weights or the thresholds. I'm not hosting it (GPT-2 plus torch doesn't fit a
+512 MB free tier, see `RUNNING.md`). I'm not adding new routes or rebuilding
+the interface.
+
+---
+
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
