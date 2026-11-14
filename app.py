@@ -24,6 +24,7 @@ Routes:
     GET  /health      is the service up, and is the model loaded
 """
 
+import os
 import time
 import uuid
 
@@ -334,6 +335,31 @@ def get_log():
     return jsonify({"count": len(entries), "entries": entries})
 
 
+def warm_up_model() -> None:
+    """
+    Capstone improvement: pay the model-load cost at startup, not in the first
+    request.
+
+    Before this, the first POST /submit after a restart loaded gpt2 from disk
+    inside the request (model_ms was 99.9% of its 2.7 to 3.8 second duration).
+    Now the weights are loaded, and one throwaway sentence is scored, before the
+    service starts answering. The trade: startup takes a few seconds longer.
+
+    If the model can't load, say so and carry on. /submit still answers 503 for
+    that case, exactly as it did before.
+    """
+    import detector
+
+    started = time.perf_counter()
+    try:
+        detector.warm_up()
+        detector.model_signal("The quick brown fox jumps over the lazy dog by the river bank today.")
+    except detector.DetectorUnavailable as exc:
+        print(f"  detector warm-up:  skipped ({exc})")
+        return
+    print(f"  detector warm-up:  {time.perf_counter() - started:.1f}s (model loaded before serving)")
+
+
 def main():
     print(f"Provenance Guard on http://{config.HOST}:{config.PORT}")
     print(f"  detector model:  {config.DETECTOR_MODEL}")
@@ -346,6 +372,10 @@ def main():
     print("    -d '{\"message\": \"hello\"}'")
     print()
     # debug=True hands out an interactive debugger, so it's local-only — see config.py
+    # Flask's debug reloader starts a second copy of this script; warm only the
+    # copy that actually serves, so the model isn't loaded twice.
+    if not config.DEBUG or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        warm_up_model()
     app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
 
 
