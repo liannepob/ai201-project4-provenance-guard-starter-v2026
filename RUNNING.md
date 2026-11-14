@@ -306,3 +306,52 @@ is evidence, and the entries you paste into your README are what unit 8 grades.
 
 **Do not delete and recreate this repository.** You submit the same URL both
 units.
+
+---
+
+## Capstone run path (Path B: local, with logs)
+
+**Start command, from a clean checkout:**
+
+```bash
+git clone https://github.com/liannepob/ai201-project4-provenance-guard-starter-v2026
+cd ai201-project4-provenance-guard-starter-v2026
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python detector.py        # one time only: downloads the gpt2 model
+python app.py             # starts the service on http://127.0.0.1:5000
+```
+
+**Check it ran** (second terminal):
+
+```bash
+curl -X POST http://127.0.0.1:5000/submit \
+  -H "Content-Type: application/json" \
+  -d '{"text": "I walked to the store yesterday and it was closed. That was annoying, honestly, because I needed milk for the morning.", "creator_id": "me"}'
+
+tail -n 3 logs/requests.jsonl      # one record per request, including failures
+tail -n 3 logs/audit.jsonl         # one record per decision
+```
+
+**What the environment needs**
+
+| Need | Value |
+|---|---|
+| Python | 3.11, 3.12 or 3.13 (not 3.14) |
+| Dependencies | pinned with lower and upper bounds in `requirements.txt` (flask, flask-limiter, requests, transformers, torch, gunicorn, certifi) |
+| Model file | `gpt2`, about 550 MB, downloaded once to the Hugging Face cache by `python detector.py` |
+| API key | none. Nothing calls a hosted service |
+| Internet | needed once, to download the model and install packages. Not needed to run |
+
+**What gets recorded**
+
+| File | One line per | Holds |
+|---|---|---|
+| `logs/requests.jsonl` | request (success, rejection and crash) | timestamp, request_id, path, status, duration_ms, input summary, output summary, stage timings, error |
+| `logs/audit.jsonl` | decision, appeal or rate-limit rejection | the nine audit fields |
+
+**Measure the cost of a run:** `python measure_cost.py` (10 requests, paced to
+stay under the 10-per-minute limit).
+
+**Why this isn't hosted:** see "This project will not fit a free host" above.
+torch plus gpt2 is over a 512 MB free tier before the first request.
