@@ -845,7 +845,7 @@ that produced it. All from trial 1.
 ]
 ```
 
-*Diagnoses*
+**Diagnoses**
 
 <!-- For each miss AND each broken attack: the stage and the mechanism.
 
