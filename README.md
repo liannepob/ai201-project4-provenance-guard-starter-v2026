@@ -845,7 +845,7 @@ that produced it. All from trial 1.
 ]
 ```
 
-**Diagnoses**
+*Diagnoses*
 
 <!-- For each miss AND each broken attack: the stage and the mechanism.
 
@@ -1179,6 +1179,108 @@ Out of scope: I'm not changing the detector, the stylometry, the scoring
 weights or the thresholds. I'm not hosting it (GPT-2 plus torch doesn't fit a
 512 MB free tier, see `RUNNING.md`). I'm not adding new routes or rebuilding
 the interface.
+
+**Running It**
+
+Path B (local, with logs). The start command is `python3 app.py`, and the full steps, the environment and the record of what gets logged are in [RUNNING.md](RUNNING.md). The environment is Python 3.11 to 3.13 (I ran 3.13), the pinned dependencies in `requirements.txt`, and the `gpt2` model file (about 550 MB, downloaded once by `python3 detector.py`). I did not try to host it: torch plus gpt2 is more than a 512 MB free tier holds, so a hosted run was never going to work for this system.
+
+<!-- TODO(Lianne): run RUNNING.md from a fresh clone in a new folder, then replace this line with one sentence on what was missing or broke the first time. The brief requires this check. -->
+
+**Instrumentation**
+
+Every request writes one JSON line to `logs/requests.jsonl` (written by `request_log.py`, hooked in by `request_log.init_app(app)` in `app.py`). Each record has: `timestamp`, `request_id` (also returned in the `X-Request-ID` header), `method`, `path`, `status`, `duration_ms`, `input` (creator_id, text length, first 60 characters), `output` (content_id, guess, label, scores, or the error code), and, when it applies, `stages` (`model_ms` and `style_ms`) and `error`. Rejected requests and crashes are logged too. An unhandled exception comes back as a JSON 500 and still leaves a record.
+
+Ten successful `POST /submit` requests, from the first trial of the before run (`results/capstone_before_2026-11-14_1711.md`, copied from `logs/requests.jsonl`). The first one is the cold request:
+
+```
+{"timestamp": "2026-11-14T22:03:21.415+00:00", "request_id": "r_077196a407", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 3813.5, "input": {"creator_id": "capstone_trial", "text_chars": 489, "text_preview": "I didn't sleep. Not properly, anyway — I lay there listening"}, "output": {"content_id": "c_1321821e861c", "guess": "human", "label": "We think this text was written by a pers", "confidence": 0.3114, "model_score": 0.4445, "style_score": 0.1783}, "stages": {"model_ms": 3810.6, "style_ms": 0.2}}
+{"timestamp": "2026-11-14T22:03:31.740+00:00", "request_id": "r_abff2177ed", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 69.0, "input": {"creator_id": "capstone_trial", "text_chars": 680, "text_preview": "The importance of effective time management cannot be overst"}, "output": {"content_id": "c_939a0d6f01cf", "guess": "unsure", "label": "We aren't sure whether this text was wri", "confidence": 0.5944, "model_score": 0.7544, "style_score": 0.4344}, "stages": {"model_ms": 67.5, "style_ms": 0.1}}
+{"timestamp": "2026-11-14T22:03:38.317+00:00", "request_id": "r_d830edbb12", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 66.8, "input": {"creator_id": "capstone_trial", "text_chars": 338, "text_preview": "I moved to this city two years ago for work. At first it was"}, "output": {"content_id": "c_43703d1b2c78", "guess": "ai", "label": "Our tools suggest this text was written ", "confidence": 0.8216, "model_score": 0.8567, "style_score": 0.7865}, "stages": {"model_ms": 63.2, "style_ms": 0.1}}
+{"timestamp": "2026-11-14T22:03:44.895+00:00", "request_id": "r_d5680e63b1", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 95.1, "input": {"creator_id": "capstone_trial", "text_chars": 400, "text_preview": "Time management matters more than people admit, especially n"}, "output": {"content_id": "c_56738f9067f9", "guess": "unsure", "label": "We aren't sure whether this text was wri", "confidence": 0.3689, "model_score": 0.3489, "style_score": 0.3888}, "stages": {"model_ms": 93.6, "style_ms": 0.2}}
+{"timestamp": "2026-11-14T22:03:51.502+00:00", "request_id": "r_d3ae3f5adf", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 81.7, "input": {"creator_id": "capstone_trial", "text_chars": 489, "text_preview": "I didn't sleep. Not properly, anyway — I lay there listening"}, "output": {"content_id": "c_e98a92c83781", "guess": "human", "label": "We think this text was written by a pers", "confidence": 0.3114, "model_score": 0.4445, "style_score": 0.1783}, "stages": {"model_ms": 80.5, "style_ms": 0.1}}
+{"timestamp": "2026-11-14T22:03:58.094+00:00", "request_id": "r_67c92f63a6", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 96.5, "input": {"creator_id": "capstone_trial", "text_chars": 680, "text_preview": "The importance of effective time management cannot be overst"}, "output": {"content_id": "c_e84a77f8adee", "guess": "unsure", "label": "We aren't sure whether this text was wri", "confidence": 0.5944, "model_score": 0.7544, "style_score": 0.4344}, "stages": {"model_ms": 93.4, "style_ms": 0.3}}
+{"timestamp": "2026-11-14T22:04:04.699+00:00", "request_id": "r_0fb168b4ed", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 91.3, "input": {"creator_id": "capstone_trial", "text_chars": 338, "text_preview": "I moved to this city two years ago for work. At first it was"}, "output": {"content_id": "c_402ac149f74f", "guess": "ai", "label": "Our tools suggest this text was written ", "confidence": 0.8216, "model_score": 0.8567, "style_score": 0.7865}, "stages": {"model_ms": 89.9, "style_ms": 0.1}}
+{"timestamp": "2026-11-14T22:04:11.301+00:00", "request_id": "r_db2327114b", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 72.2, "input": {"creator_id": "capstone_trial", "text_chars": 400, "text_preview": "Time management matters more than people admit, especially n"}, "output": {"content_id": "c_b70d56136e82", "guess": "unsure", "label": "We aren't sure whether this text was wri", "confidence": 0.3689, "model_score": 0.3489, "style_score": 0.3888}, "stages": {"model_ms": 70.7, "style_ms": 0.1}}
+{"timestamp": "2026-11-14T22:04:17.879+00:00", "request_id": "r_2aa5a52525", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 102.3, "input": {"creator_id": "capstone_trial", "text_chars": 489, "text_preview": "I didn't sleep. Not properly, anyway — I lay there listening"}, "output": {"content_id": "c_cf598f680026", "guess": "human", "label": "We think this text was written by a pers", "confidence": 0.3114, "model_score": 0.4445, "style_score": 0.1783}, "stages": {"model_ms": 101.2, "style_ms": 0.2}}
+{"timestamp": "2026-11-14T22:04:24.492+00:00", "request_id": "r_b7a747379e", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 81.2, "input": {"creator_id": "capstone_trial", "text_chars": 680, "text_preview": "The importance of effective time management cannot be overst"}, "output": {"content_id": "c_10141d547eb6", "guess": "unsure", "label": "We aren't sure whether this text was wri", "confidence": 0.5944, "model_score": 0.7544, "style_score": 0.4344}, "stages": {"model_ms": 79.8, "style_ms": 0.1}}
+```
+
+Two failed requests from the same run, one with missing text and one with text over 10,000 characters. Both were rejected with a 400 and logged:
+
+```
+{"timestamp": "2026-11-14T22:04:31.088+00:00", "request_id": "r_dda1e689e0", "method": "POST", "path": "/submit", "status": 400, "duration_ms": 1.2, "input": {"creator_id": "capstone_trial", "text": "missing"}, "output": {"error": "bad_request", "message": "Send JSON with a non-empty \"text\"."}, "error": "bad_request"}
+{"timestamp": "2026-11-14T22:04:50.616+00:00", "request_id": "r_0ad811886e", "method": "POST", "path": "/submit", "status": 400, "duration_ms": 0.8, "input": {"creator_id": "capstone_trial", "text_chars": 10500, "text_preview": "word word word word word word word word word word word word "}, "output": {"error": "bad_request", "message": "\"text\" can't be longer than 10000 characters."}, "error": "bad_request"}
+```
+
+**What It Costs**
+
+Measured with `measure_cost.py`: 10 `POST /submit` requests (cycling through the four files in `samples/`), paced 6.5 seconds apart to stay under my rate limit, timed with a client stopwatch and cross-checked against `duration_ms` in the log (server-side mean 0.45 s). Results: the first request took 3.75 s (it loads the model), the 9 warm requests averaged 0.092 s (range 0.075 to 0.117 s), and the mean across all 10 was 0.46 s. API spend is $0, because gpt2 runs on my machine, so the real cost is compute time.
+
+For a hundred people a day: assuming each person submits one piece a day, that is 100 requests x 0.092 s = 9.2 seconds of compute a day, plus one 3.75 s model load per restart. If each person submitted five pieces, it is 500 x 0.092 s = 46 seconds a day. Either way the time cost is tiny. The real cost is memory, since the model has to stay loaded, which is why it can't use a small free host.
+
+**Run Log and Verdicts**
+
+Run with `python3 run_capstone.py --label before`, three trials, each starting a fresh service so the first request is a real cold start. The Verdict column is my call against the targets in `criteria.md`; a target has to hold in all three trials.
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. At least 7 of 10 requests appear in requests.jsonl | 7 of 10 | 10/10 | 10/10 | 10/10 | MET |
+| 2. Missing or oversized text returns 4xx/5xx | every bad request | 6/6 | 6/6 | 6/6 | MET |
+| 3. Every warm /submit takes at most 0.1 s | every one | 14/15 (max 102.3 ms) | 15/15 (max 79.8 ms) | 14/15 (max 105.9 ms) | MISSED |
+| 4. First /submit after restart at most 3.75 s | 3750 ms | 3813.5 ms | 2669.8 ms | 2673.4 ms | MISSED |
+| 5. Every counted log line has all 8 fields | every line | 16/16 | 16/16 | 16/16 | MET |
+
+Real output, from trial 1. Criterion 4 (the cold request) and criterion 3 (the request that went over), both written by `request_log.py::init_app` and scored by `run_capstone.py::score_trial`:
+
+```
+{"timestamp": "2026-11-14T22:03:21.415+00:00", "request_id": "r_077196a407", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 3813.5, "input": {"creator_id": "capstone_trial", "text_chars": 489, "text_preview": "I didn't sleep. Not properly, anyway — I lay there listening"}, "output": {"content_id": "c_1321821e861c", "guess": "human", "label": "We think this text was written by a pers", "confidence": 0.3114, "model_score": 0.4445, "style_score": 0.1783}, "stages": {"model_ms": 3810.6, "style_ms": 0.2}}
+{"timestamp": "2026-11-14T22:04:17.879+00:00", "request_id": "r_2aa5a52525", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 102.3, "input": {"creator_id": "capstone_trial", "text_chars": 489, "text_preview": "I didn't sleep. Not properly, anyway — I lay there listening"}, "output": {"content_id": "c_cf598f680026", "guess": "human", "label": "We think this text was written by a pers", "confidence": 0.3114, "model_score": 0.4445, "style_score": 0.1783}, "stages": {"model_ms": 101.2, "style_ms": 0.2}}
+```
+
+Criterion 2 is the 400 lines under Instrumentation above. Criteria 1 and 5 are the scored lines from the same run: `1 coverage 10/10` and `5 fields 16/16 lines complete`.
+
+*Diagnoses*
+
+*Criterion 3 (warm requests).* Two requests went over 100 ms: trial 1 request 9 (102.3 ms) and trial 3 request 6 (105.9 ms). In both, `model_ms` was about 99% of the request and `style_ms` was 0.1 to 0.3 ms, so the stage is `detector.model_signal`, the gpt2 call. It isn't input length: the same 489-character text took 77 to 102 ms and the same 680-character text took 67 to 106 ms. The mechanism is that gpt2's forward pass varies by roughly 25 to 40 ms from run to run on identical input, and my target of "every request at most 100 ms" sat at the top of that range with no headroom. I think laptop CPU contention causes the variation, but the log doesn't record it, so that part is a guess.
+
+*Criterion 4 (first request).* The cold request took 3813 ms, 2670 ms and 2673 ms. In trial 1, `model_ms` was 3810.6 of the 3813.5 ms, so the stage is again `model_signal`, and the mechanism is that the first request loads the gpt2 weights from disk into memory (`detector._load`) inside the request. Trial 1 was about 1.1 s slower than the other two; I don't know why (a colder disk cache is my guess). My target of 3.75 s was the single cold time I had measured earlier, so it had almost no margin.
+
+*Pattern.* Both misses are one problem in one stage: nearly all of the time in this system is gpt2 inside the request, and I set both targets at a value I had measured once, with no headroom.
+
+**The Improvement**
+
+*What I changed:* the service now loads gpt2 and scores one throwaway sentence at startup, before it starts answering (`app.py::warm_up_model`, called from `main()`), instead of loading the model inside the first request. *Why:* the criterion 4 diagnosis, where the model load was 99.9% of the cold request. *The trade:* startup takes a few seconds longer, because the load cost moved from the first request to startup. I did not time the startup.
+
+After, with `python3 run_capstone.py --label after`, same format:
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. At least 7 of 10 requests appear in requests.jsonl | 7 of 10 | 10/10 | 10/10 | 10/10 | MET |
+| 2. Missing or oversized text returns 4xx/5xx | every bad request | 6/6 | 6/6 | 6/6 | MET |
+| 3. Every warm /submit takes at most 0.1 s | every one | 15/15 (max 73.9 ms) | 14/15 (max 100.5 ms) | 15/15 (max 79.1 ms) | MISSED |
+| 4. First /submit after restart at most 3.75 s | 3750 ms | 80.6 ms | 72.8 ms | 73.1 ms | MET |
+| 5. Every counted log line has all 8 fields | every line | 16/16 | 16/16 | 16/16 | MET |
+
+Real output from the after run (`results/capstone_after_2026-11-14_1729.md`): the cold request in trial 1, and the one request that went over in trial 2:
+
+```
+{"timestamp": "2026-11-14T22:23:10.489+00:00", "request_id": "r_7e0afac353", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 80.6, "input": {"creator_id": "capstone_trial", "text_chars": 489, "text_preview": "I didn't sleep. Not properly, anyway — I lay there listening"}, "output": {"content_id": "c_6e73b20713b2", "guess": "human", "label": "We think this text was written by a pers", "confidence": 0.3114, "model_score": 0.4445, "style_score": 0.1783}, "stages": {"model_ms": 77.9, "style_ms": 0.3}}
+{"timestamp": "2026-11-14T22:26:18.907+00:00", "request_id": "r_80f6c592c8", "method": "POST", "path": "/submit", "status": 200, "duration_ms": 100.5, "input": {"creator_id": "capstone_trial", "text_chars": 338, "text_preview": "I moved to this city two years ago for work. At first it was"}, "output": {"content_id": "c_de3da7294df0", "guess": "ai", "label": "Our tools suggest this text was written ", "confidence": 0.8216, "model_score": 0.8567, "style_score": 0.7865}, "stages": {"model_ms": 99.0, "style_ms": 0.1}}
+```
+
+*Did it help:* yes for criterion 4. The first request fell from 2.7 to 3.8 seconds to about 75 ms, and the criterion now holds in all three trials. Criterion 3 still misses: trial 2 had one request at 100.5 ms, 0.5 ms over. That fits the variance diagnosis, since the change did not touch the per-request cost. Trials 1 and 3 had lower maximums than before (73.9 and 79.1 ms), but the warm-up targeted the cold start, so I would not credit it for that. It is probably noise, and one run set can't tell me which.
+
+**What's Still Broken**
+
+*Criterion 3 (warm requests, still missed in one trial).* What I would do: measure a few hundred warm requests to get the real spread, see whether the variation comes from the laptop being busy or from gpt2 itself (for example by limiting torch's thread count and re-measuring), and then pick a target from the measured 95th percentile instead of a single number. Why I stopped: the unit allows one improvement, and the fix for criterion 4 was the one the diagnosis supported best. I didn't loosen the 0.1 s target to make it pass, because I missed it and that's not a reason to change it.
+
+*Targets that were too easy.* Criterion 1 came out at 10/10 in all six trials against a target of 7 of 10, so it couldn't really fail. I'd tighten it to 10 of 10, since the logger writes every request unconditionally. Criterion 2 also has no count in its wording; the runner sent 6 bad requests and I would write that number into the criterion.
+
+*What I'd do first with another unit:* collect the large warm-request sample above and set the speed targets from it. Both my speed misses came from targets chosen from one measurement, so measuring a distribution first would fix the cause instead of a symptom.
+
+**How I Used AI**
+
+<!-- TODO(Lianne): replace this with two specific moments, in your own words: what you asked, what you got, what you changed. Also say that Claude wrote request_log.py, measure_cost.py, run_capstone.py and the warm-up in app.py. -->
 
 ---
 
