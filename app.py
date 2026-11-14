@@ -24,14 +24,17 @@ Routes:
     GET  /health      is the service up, and is the model loaded
 """
 
+import time
 import uuid
 
 from flask import Flask, jsonify, request
 
 import audit
 import config
+import request_log
 
 app = Flask(__name__)
+request_log.init_app(app)  # capstone: every request leaves a record
 
 
 # ── Rate limiting — UNIT 8 ────────────────────────────────────────────────────
@@ -223,7 +226,9 @@ def submit():
     # python detector.py "some text"
     import detector
     try:
+        _t = time.perf_counter()
         model_score = detector.model_signal(text)
+        request_log.note(model_ms=round((time.perf_counter() - _t) * 1000, 1))
     except ValueError:
         return jsonify({"error": "bad_request", "message": "\"text\" is too short to score. Send a few sentences at least."}), 400
     except detector.DetectorUnavailable:
@@ -231,7 +236,9 @@ def submit():
 
     # Step 5 - the second signal: the shape of the text, not its meaning
     import stylometry
+    _t = time.perf_counter()
     style_score = stylometry.style_signal(text)
+    request_log.note(style_ms=round((time.perf_counter() - _t) * 1000, 1))
 
     # Step 6 - combine them (rule and weights: scoring.py, config.py)
     import scoring
