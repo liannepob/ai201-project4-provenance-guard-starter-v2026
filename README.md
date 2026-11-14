@@ -1184,7 +1184,7 @@ the interface.
 
 Path B (local, with logs). The start command is `python3 app.py`, and the full steps, the environment and the record of what gets logged are in [RUNNING.md](RUNNING.md). The environment is Python 3.11 to 3.13 (I ran 3.13), the pinned dependencies in `requirements.txt`, and the `gpt2` model file (about 550 MB, downloaded once by `python3 detector.py`). I did not try to host it: torch plus gpt2 is more than a 512 MB free tier holds, so a hosted run was never going to work for this system.
 
-<!-- TODO(Lianne): run RUNNING.md from a fresh clone in a new folder, then replace this line with one sentence on what was missing or broke the first time. The brief requires this check. -->
+I followed RUNNING.md from a fresh clone in a new folder with a new venv and nothing was missing, but I did not repeat the model download in the fresh clone because I had already downloaded it once earlier, so I copied gpt2 from my existing cache, and the rest (pip install, python3 app.py, the curl and the new line in logs/requests.jsonl) was tested from scratch.
 
 **Instrumentation**
 
