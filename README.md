@@ -1280,7 +1280,11 @@ Real output from the after run (`results/capstone_after_2026-11-14_1729.md`): th
 
 **How I Used AI**
 
-<!-- TODO(Lianne): replace this with two specific moments, in your own words: what you asked, what you got, what you changed. Also say that Claude wrote request_log.py, measure_cost.py, run_capstone.py and the warm-up in app.py. -->
+*Moment 1: checking my criteria.* I asked Claude to check my criteria and their wording and make sure each one was testable and measurable. It told me that my first criterion said the log should only hold passed requests, which contradicted my own logger since requests.jsonl logs every request, that my second criterion had no number, and that my fourth had two different numbers. I changed the wording and the content of the criteria to fix those and to meet the standards of the assignment. I also used Claude Code to help adjust the wording for accuracy. AI helped me turn my ideas into criteria that were testable and measurable, and the targets and decisions in them are mine.
+
+*Moment 2: diagnosing the misses.* I asked Claude why criteria 3 and 4 missed. It read the per-stage timings from my own log and showed that the model_signal stage was 93% to 99.9% of every request, and that for the slow first request the time was the model load (detector._load) happening inside the request. I approved moving the model load to startup, and Claude made that change and I re-ran the trials to measure it.
+
+Claude also wrote request_log.py, measure_cost.py, run_capstone.py and the startup warm-up in app.py. I chose the shape, the system, the targets, the verdicts and which improvement to make.
 
 ---
 
